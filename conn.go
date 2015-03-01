@@ -1,4 +1,4 @@
-package nighthawk
+package goair
 
 import (
 	"bufio"

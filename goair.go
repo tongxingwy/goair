@@ -1,4 +1,4 @@
-package nighthawk
+package goair
 
 type airServerInterface interface {
 	ReceivedAudioPacket(c *Client, data []byte, length int)

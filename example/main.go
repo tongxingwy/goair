@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/zhangtx/goair"
+	"github.com/tongxingwy/goair"
 	//"log"
 )
 

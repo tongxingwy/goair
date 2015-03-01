@@ -1,10 +1,9 @@
-package nighthawk
+package goair
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	//"io"
 	"log"
 )
 
