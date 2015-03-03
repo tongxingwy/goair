@@ -44,7 +44,7 @@ func registerServices(servername string) {
 	}
 
 	airplayOp := dnssd.NewRegisterOp(servername, "_airplay._tcp", airplayPort, registerServiceCallbackFunc)
-
+	log.Printf("registerServices _airplay._tcp servername: %s", servername)
 	airplayOp.SetTXTPair("deviceid", hardwareAddr.String())
 	mask := 0x100029ff //0x00C0
 	features := fmt.Sprintf("0x%x", mask)
@@ -62,8 +62,10 @@ func registerServices(servername string) {
 
 // Throw away callback func.
 func registerServiceCallbackFunc(op *dnssd.RegisterOp, err error, add bool, name, serviceType, domain string) {
-	log.Printf("registerServiceCallbackFunc error: %s", err)
-	log.Printf("registerServiceCallbackFunc name:", name)
+	if err != nil {
+		log.Printf("registerServiceCallbackFunc error: %s", err)
+		log.Printf("registerServiceCallbackFunc name:", name)
+	}
 }
 
 // getMacAddress gets the mac address to broadcast our DNS services on.

@@ -31,7 +31,7 @@ const (
 
 // startAirplay starts the airplay server.
 func (s *airServer) startAirplay() {
-	log.Println("started Airplay service")
+	//log.Println("started Airplay service")
 	// I believe there is some sort of generic http server that handles video streaming on port 7000.
 	s.startMirroringWebServer(mirroringPort) //for screen mirroring
 }
