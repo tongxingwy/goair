@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/tongxingwy/goair"
-	//"log"
+	"log"
 )
 
 type airplayHandler struct {
@@ -15,7 +15,7 @@ func main() {
 }
 
 func (h *airplayHandler) ReceivedAudioPacket(c *goair.Client, data []byte, length int) {
-	//log.Println("got an audio packet")
+	log.Println("got an audio packet")
 }
 
 func (h *airplayHandler) SupportedMirrorFeatures() goair.MirrorFeatures {

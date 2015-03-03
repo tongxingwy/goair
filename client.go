@@ -42,7 +42,7 @@ func (c *Client) start() {
 	go c.timeSvr.start()
 }
 
-//start the audio stream
+//stop the udp time server
 func (c *Client) stop() {
 	c.timeSvr.stop()
 }

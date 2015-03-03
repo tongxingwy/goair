@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/tongxingwy/go-plist"
 	"log"
+	"os"
 )
 
 type MirrorFeatures struct {
@@ -43,7 +45,9 @@ func (s *airServer) startMirroringWebServer(port int) {
 		isStream := false
 		for {
 			if isStream {
-				s.handleVideoStream(c)
+				if s.handleVideoStream(c){
+					break
+				}
 				//add interface stuff here too
 			} else {
 				verb, resource, headers, data, err := readRequest(c.buf.Reader)
@@ -55,7 +59,7 @@ func (s *airServer) startMirroringWebServer(port int) {
 					return
 				}
 				resHeaders := make(map[string]string)
-				resHeaders["User-Agent"] = "AirPlay/215.10"
+				resHeaders["User-Agent"] = "AirPlay/150.33"
 				if resource == "/stream.xml" {
 					f := s.delegate.SupportedMirrorFeatures()
 					d := s.createFeaturesResponse(f)
@@ -63,8 +67,27 @@ func (s *airServer) startMirroringWebServer(port int) {
 				} else if resource == "/fp-setup" {
 					resData := s.handleFairPlay(resHeaders, data)
 					c.buf.Write(s.createMirrorResponse(true, false, resHeaders, resData))
-				} else {
-					//log.Println("Got the second mirror stream!")
+				} else if resource == "/stream"{
+					//log.Println("Got the second mirror stream!",data)
+					var info MirrorStreamInfo
+					log.Println(plist.Unmarshal(data,&info))
+					log.Println("info: ",info)
+					buf := bytes.NewReader(data)
+					decoder := plist.NewDecoder(buf)
+					err := decoder.Decode(&info)
+					if err != nil {
+						log.Println("plist error: ",err)
+					}
+					log.Println("buf: ",buf)
+					log.Println("info: ",info)
+					log.Println("latencyMs: ",info.latencyMs,",sessionID: ",info.sessionID)
+					fout,err := os.Create("userFile.plist")
+	        defer fout.Close()
+	        if err != nil {
+	                fmt.Println("userFile.plist",err)
+	                return
+	        }
+					fout.Write(data)
 					host := s.getClientIP(c)
 					client := s.clients[host]
 					if client != nil {
@@ -136,12 +159,13 @@ func (server *airServer) createFeaturesResponse(f MirrorFeatures) []byte {
 	return []byte(str)
 }
 
-func (server *airServer) handleVideoStream(c *conn) {
+func (server *airServer) handleVideoStream(c *conn) bool{
 	buffer := make([]byte, 128)
 	for {
 		n, err := c.Read(buffer)
 		if err != nil { //&& err != io.EOF
 			log.Println(err)
+			return true
 		}
 		if n <= 0 {
 			break
@@ -152,8 +176,10 @@ func (server *airServer) handleVideoStream(c *conn) {
 		if err != nil {
 			fmt.Println("binary.Read failed:", err)
 		}
-		log.Println("Stream Packet Header.")
-		log.Println(header.PayloadType)
-		log.Println(header.PayloadSize)
+		//log.Println("Stream Packet Header: ",header.PayloadType)
+		//log.Println(header.PayloadType)
+		//log.Println(header.PayloadSize)
+		//log.Println(header.NTPTimestamp)
 	}
+	return true
 }
