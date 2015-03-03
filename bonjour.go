@@ -3,7 +3,7 @@ package goair
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/andrewtj/dnssd"
+	"github.com/tongxingwy/dnssd"
 	"log"
 	"net"
 )
