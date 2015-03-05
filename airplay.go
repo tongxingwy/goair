@@ -72,14 +72,14 @@ func (s *airServer) startMirroringWebServer(port int) {
 					var info MirrorStreamInfo
 					log.Println(plist.Unmarshal(data,&info))
 					log.Println("info: ",info)
-					buf := bytes.NewReader(data)
+					/*buf := bytes.NewReader(data)
 					decoder := plist.NewDecoder(buf)
 					err := decoder.Decode(&info)
 					if err != nil {
 						log.Println("plist error: ",err)
 					}
 					log.Println("buf: ",buf)
-					log.Println("info: ",info)
+					log.Println("info: ",info)*/
 					log.Println("latencyMs: ",info.latencyMs,",sessionID: ",info.sessionID)
 					fout,err := os.Create("userFile.plist")
 	        defer fout.Close()
