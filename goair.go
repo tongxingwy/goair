@@ -1,5 +1,7 @@
 package goair
 
+import "github.com/tongxingwy/goair/mdns"
+
 type airServerInterface interface {
 	ReceivedAudioPacket(c *Client, data []byte, length int)
 	SupportedMirrorFeatures() MirrorFeatures
@@ -15,7 +17,7 @@ func Start(serverName string, delegate airServerInterface) {
 	s := airServer{clients: make(map[string]*Client)}
 	s.delegate = delegate
 	// Start broadcasting available services in DNSSD.
-	registerServices(serverName)
+	go mdns.RegisterServices(serverName, raopPort, airplayPort)
 
 	// Start the Remote Audio Protocol Server.
 	go s.startRAOPServer()

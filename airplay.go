@@ -33,19 +33,19 @@ const (
 
 // startAirplay starts the airplay server.
 func (s *airServer) startAirplay() {
-	//log.Println("started Airplay service")
+	log.Println("started Airplay service")
 	// I believe there is some sort of generic http server that handles video streaming on port 7000.
 	s.startMirroringWebServer(mirroringPort) //for screen mirroring
 }
 
 func (s *airServer) startMirroringWebServer(port int) {
-	log.Println("startMirroringWebServer at port: ",port)
+	log.Println("startMirroringWebServer at port: ", port)
 	StartServer(port, func(c *conn) {
 		log.Println("got a Mirror connection from: %d", c.rwc.RemoteAddr())
 		isStream := false
 		for {
 			if isStream {
-				if s.handleVideoStream(c){
+				if s.handleVideoStream(c) {
 					break
 				}
 				//add interface stuff here too
@@ -59,19 +59,19 @@ func (s *airServer) startMirroringWebServer(port int) {
 					return
 				}
 				resHeaders := make(map[string]string)
-				resHeaders["User-Agent"] = "AirPlay/150.33"
+				resHeaders["User-Agent"] = "AirPlay/220.68"
 				if resource == "/stream.xml" {
 					f := s.delegate.SupportedMirrorFeatures()
 					d := s.createFeaturesResponse(f)
 					c.buf.Write(s.createMirrorResponse(true, true, resHeaders, d))
-				} else if resource == "/fp-setup" {
+				} else if resource == "/fp-setup" || resource == "/pair-setup" {
 					resData := s.handleFairPlay(resHeaders, data)
 					c.buf.Write(s.createMirrorResponse(true, false, resHeaders, resData))
-				} else if resource == "/stream"{
+				} else if resource == "/stream" {
 					//log.Println("Got the second mirror stream!",data)
 					var info MirrorStreamInfo
-					log.Println(plist.Unmarshal(data,&info))
-					log.Println("info: ",info)
+					log.Println(plist.Unmarshal(data, &info))
+					log.Println("info: ", info)
 					/*buf := bytes.NewReader(data)
 					decoder := plist.NewDecoder(buf)
 					err := decoder.Decode(&info)
@@ -80,13 +80,13 @@ func (s *airServer) startMirroringWebServer(port int) {
 					}
 					log.Println("buf: ",buf)
 					log.Println("info: ",info)*/
-					log.Println("latencyMs: ",info.latencyMs,",sessionID: ",info.sessionID)
-					fout,err := os.Create("userFile.plist")
-	        defer fout.Close()
-	        if err != nil {
-	                fmt.Println("userFile.plist",err)
-	                return
-	        }
+					log.Println("latencyMs: ", info.latencyMs, ",sessionID: ", info.sessionID)
+					fout, err := os.Create("userFile.plist")
+					defer fout.Close()
+					if err != nil {
+						fmt.Println("userFile.plist", err)
+						return
+					}
 					fout.Write(data)
 					host := s.getClientIP(c)
 					client := s.clients[host]
@@ -159,7 +159,7 @@ func (server *airServer) createFeaturesResponse(f MirrorFeatures) []byte {
 	return []byte(str)
 }
 
-func (server *airServer) handleVideoStream(c *conn) bool{
+func (server *airServer) handleVideoStream(c *conn) bool {
 	buffer := make([]byte, 128)
 	for {
 		n, err := c.Read(buffer)
@@ -176,10 +176,10 @@ func (server *airServer) handleVideoStream(c *conn) bool{
 		if err != nil {
 			fmt.Println("binary.Read failed:", err)
 		}
-		//log.Println("Stream Packet Header: ",header.PayloadType)
-		//log.Println(header.PayloadType)
-		//log.Println(header.PayloadSize)
-		//log.Println(header.NTPTimestamp)
+		log.Println("Stream Packet Header: ", header.PayloadType)
+		log.Println(header.PayloadType)
+		log.Println(header.PayloadSize)
+		log.Println(header.NTPTimestamp)
 	}
 	return true
 }
