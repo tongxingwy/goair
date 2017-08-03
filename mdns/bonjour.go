@@ -14,7 +14,7 @@ import (
 // Register RAOP and Airplay services in Bonjour/DNSSD.
 func RegisterServices(servername string, raopPort int, airplayPort int) {
 	hardwareAddr := getMacAddress()
-
+	interfaces := getInterfaces()
 	name := fmt.Sprintf("%s@%s", hex.EncodeToString(hardwareAddr), servername)
 
 	log.Printf("registerServices _raop._tcp servername: %s", name)
@@ -41,7 +41,7 @@ func RegisterServices(servername string, raopPort int, airplayPort int) {
 				 "vs=220.68",
 
 		},
-		nil)
+		interfaces)
 	if err != nil {
 		log.Printf("Failed to register RAOP service: %s", err)
 		return
@@ -62,7 +62,7 @@ func RegisterServices(servername string, raopPort int, airplayPort int) {
 				 "srcvers=220.68",
 				 "vv=2",
 		},
-		nil)
+		interfaces)
 
 	if err != nil {
 		log.Printf("Failed to register airplay service: %s", err)
@@ -83,7 +83,7 @@ func RegisterServices(servername string, raopPort int, airplayPort int) {
 	log.Printf("RAOP and Airplay services over ...")
 }
 
-// getMacAddress gets the mac address to broadcast our DNS services on.
+// getMacAddress gets the mac address to bro2adcast our DNS services on.
 func getMacAddress() net.HardwareAddr {
 	interfaces, err := net.Interfaces()
 	if err != nil {
@@ -102,4 +102,27 @@ func getMacAddress() net.HardwareAddr {
 	}
 	log.Println("WARNING: didn't find mac address, using default one")
 	return []byte{0x48, 0x5d, 0x60, 0x7c, 0xee, 0x22} //default because we couldn't find the real one
+}
+
+func getInterfaces() []net.Interface {
+	var interfaces []net.Interface
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil
+	}
+	for _, ifi := range ifaces {
+		if (ifi.Flags&net.FlagUp) == 0 || (ifi.Flags&net.FlagLoopback) == 4 {
+			continue
+		}
+		addrs, err := ifi.Addrs()
+		if err != nil || len(addrs) == 0 {
+			continue
+		}
+		if (ifi.Flags & net.FlagMulticast) > 0 {
+			interfaces = append(interfaces, ifi)
+		}
+		break
+	}
+
+	return interfaces
 }
