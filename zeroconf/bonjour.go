@@ -1,4 +1,4 @@
-package mdns
+package zeroconf
 
 import (
 	"net"
@@ -8,18 +8,18 @@ import (
 	"os/signal"
 	"os"
 	"syscall"
-	"github.com/hashicorp/mdns"
+	"github.com/grandcat/zeroconf"
 )
 
 // Register RAOP and Airplay services in Bonjour/DNSSD.
 func RegisterServices(servername string, raopPort int, airplayPort int) {
 	hardwareAddr := getMacAddress()
-	ips := getIps()
+	interfaces := getInterfaces()
 
 	name := fmt.Sprintf("%s@%s", hex.EncodeToString(hardwareAddr), servername)
 
 	log.Printf("registerServices _raop._tcp servername: %s", name)
-	mdn_raop, _ := mdns.NewMDNSService(name, "_raop._tcp", "", "", raopPort, ips,
+	s_raop, err := zeroconf.Register(name, "_raop._tcp", "", raopPort,
 		[]string{"am=AppleTV3,2",
 				 "ch=2",
 				 "cn=0,1,2,3",
@@ -41,8 +41,8 @@ func RegisterServices(servername string, raopPort int, airplayPort int) {
 				 "vn=65537",
 				 "vs=220.68",
 
-		})
-	s_raop, err := mdns.NewServer(&mdns.Config{Zone: mdn_raop})
+		},
+		interfaces)
 	if err != nil {
 		log.Printf("Failed to register RAOP service: %s", err)
 		return
@@ -50,8 +50,8 @@ func RegisterServices(servername string, raopPort int, airplayPort int) {
 	defer s_raop.Shutdown()
 
 	log.Printf("registerServices _airplay._tcp servername: %s", servername)
-	mdn_airplay, err := mdns.NewMDNSService(servername, "_airplay._tcp", "", "", airplayPort, ips,
-		[]string{"deviceid = " + hardwareAddr.String(),
+	s_airplay, err := zeroconf.Register(servername, "_airplay._tcp", "", airplayPort,
+		[]string{"deviceid=" + hardwareAddr.String(),
 				 "features=0x5A7FFFF7,0x1E",
 				 "flags=0x44",
 				 "model=AppleTV3,2",
@@ -62,8 +62,9 @@ func RegisterServices(servername string, raopPort int, airplayPort int) {
 				 "rsv=1.0",
 				 "srcvers=220.68",
 				 "vv=2",
-		})
-	s_airplay, err := mdns.NewServer(&mdns.Config{Zone: mdn_airplay})
+		},
+		interfaces)
+
 	if err != nil {
 		log.Printf("Failed to register airplay service: %s", err)
 		return
@@ -108,7 +109,6 @@ func getInterfaces() []net.Interface {
 	var interfaces []net.Interface
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		log.Printf("Failed to register airplay service: %s", err)
 		return nil
 	}
 	for _, ifi := range ifaces {
@@ -126,20 +126,4 @@ func getInterfaces() []net.Interface {
 	}
 
 	return interfaces
-}
-
-func getIps() []net.IP {
-	var ips []net.IP
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		log.Printf("Failed to get addrs: %s", err)
-		return nil
-	}
-
-	for _, a := range addrs {
-		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
-			ips = append(ips, ipnet.IP)
-		}
-	}
-	return ips
 }

@@ -1,6 +1,9 @@
 package goair
 
-import "github.com/tongxingwy/goair/mdns"
+import (
+	"github.com/tongxingwy/goair/bonjour"
+	"log"
+)
 
 type airServerInterface interface {
 	ReceivedAudioPacket(c *Client, data []byte, length int)
@@ -17,11 +20,14 @@ func Start(serverName string, delegate airServerInterface) {
 	s := airServer{clients: make(map[string]*Client)}
 	s.delegate = delegate
 	// Start broadcasting available services in DNSSD.
-	go mdns.RegisterServices(serverName, raopPort, airplayPort)
+	go bonjour.RegisterServices(serverName, raopPort, airplayPort)
 
 	// Start the Remote Audio Protocol Server.
 	go s.startRAOPServer()
 
 	// Start the Airplay Server.
 	s.startAirplay()
+
+	log.Println("RAOP and Airplay services stoped  ...")
+
 }
