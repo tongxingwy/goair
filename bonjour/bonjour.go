@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"github.com/oleksandr/bonjour"
 	"strings"
+	"github.com/tongxingwy/goair/utils"
 )
 
 // Register RAOP and Airplay services in Bonjour/DNSSD.
@@ -108,7 +109,12 @@ func getMacAddress() net.HardwareAddr {
 }
 
 func getIpAddr() (string, string) {
+	ip, err := utils.GetFirstLocalIPAddr()
+	if err != nil {
+		log.Printf("Error: can't get ip %v \n", err)
+		panic(err)
+	}
 	hostname, _ := os.Hostname()
 	host := fmt.Sprintf("%s.", strings.Trim(hostname, "."))
-	return "192.168.1.100", host
+	return ip.String(), host
 }
