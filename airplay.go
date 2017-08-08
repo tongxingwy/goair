@@ -25,14 +25,12 @@ type streamPacketHeader struct {
 }
 
 const (
-	airplayPort      = 7000
-	mirroringPort    = 7100
 	HTTPProtocolType = "HTTP/1.1"
 	//rstAvoidanceDelay = 500 * time.Millisecond
 )
 
 // startAirplay starts the airplay server.
-func (s *airServer) startAirplay() {
+func (s *airServer) startAirplay(mirroringPort int) {
 	log.Println("started Airplay service")
 	// I believe there is some sort of generic http server that handles video streaming on port 7000.
 	s.startMirroringWebServer(mirroringPort) //for screen mirroring
