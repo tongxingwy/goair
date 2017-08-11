@@ -22,7 +22,7 @@ var textprotoReaderPool sync.Pool
 type ConnState int
 
 const (
-	StateNew ConnState = iota
+	StateNew      ConnState = iota
 	StateActive
 	StateIdle
 	StateHijacked
@@ -220,7 +220,7 @@ func parseFirstLine(line string) (string, string, error) {
 		return "", "", errors.New("Invalid RTSP format")
 	}
 	s2 += s1 + 1
-	return line[:s1], line[s1+1 : s2], nil
+	return line[:s1], line[s1+1: s2], nil
 }
 
 //get a header value

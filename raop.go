@@ -8,11 +8,13 @@ import (
 	"strconv"
 	"strings"
 	"github.com/tongxingwy/goair/utils"
-)
-
-const (
-	RTSPProtocolType = "RTSP/1.0"
-	//rstAvoidanceDelay = 500 * time.Millisecond
+	"github.com/brutella/hc/crypto/curve25519"
+	"crypto/sha512"
+	"io"
+	"crypto/aes"
+	"crypto/cipher"
+	"github.com/brutella/hc/crypto"
+	"github.com/tongxingwy/goair/raw"
 )
 
 // startRAOPServer starts the RTSP/RAOP server.
@@ -29,10 +31,10 @@ func (s *airServer) startRAOPServer(raopPort int) {
 			resHeaders["Server"] = "AirTunes/220.68"
 			key := "Cseq"
 			if headers[key] != nil {
-				resHeaders[key] = headers[key][0]
+				resHeaders[key] = utils.ToString(utils.ParseInt(headers[key][0]) + 1)
 			}
 			resData, status := s.processRTSPRequest(c, verb, resource, headers, resHeaders, data)
-			c.buf.Write(s.createRTSPResponse(status, resHeaders, resData))
+			c.buf.Write(utils.CreateRtspResponse(status, false, resHeaders, resData))
 			c.buf.Flush()
 			c.resetConn()
 			if !status || verb == "TEARDOWN" {
@@ -43,39 +45,17 @@ func (s *airServer) startRAOPServer(raopPort int) {
 	log.Println("RAOP server finished...?")
 }
 
-//creates a response to send back to the client
-func (server *airServer) createRTSPResponse(success bool, headers map[string]string, data []byte) []byte {
-	s := RTSPProtocolType
-	if success {
-		s += " 200 OK" + carReturn
-		if data != nil {
-			s += fmt.Sprintf("Content-Type: application/octet-stream%s", carReturn)
-			s += fmt.Sprintf("Content-Length: %d%s", len(data), carReturn)
-		}
-		for key, val := range headers {
-			s += fmt.Sprintf("%s: %s%s", key, val, carReturn)
-		}
-	} else {
-		s += " 400 Bad Request" + carReturn
-	}
-	//log.Println("response is (minus data):", s)
-	body := []byte(s + carReturn)
-	if data != nil {
-		body = append(body, data...)
-	}
-	return body
-}
-
 //processes the request by dispatching to the proper method for each response
 func (s *airServer) processRTSPRequest(c *conn, verb, resource string, headers map[string][]string, resHeaders map[string]string, data []byte) ([]byte, bool) {
 	log.Println("resource is:", resource)
 	log.Println("verb is:", verb)
+	log.Println("head is:", headers)
 	if verb == "POST" && resource == "/fp-setup" {
 		return s.handleFairPlay(resHeaders, data), true
 	} else if verb == "POST" && resource == "/pair-setup" {
-		return s.handlePairSetup(resHeaders, data), true
+		return s.handlePairSetup(headers, resHeaders, data), true
 	} else if verb == "POST" && resource == "/pair-verify" {
-		return s.handlePairVerify(resHeaders, data), true
+		return s.handlePairVerify(headers, resHeaders, data), true
 	} else if verb == "POST" && resource == "/auth-setup" {
 		return nil, true
 	} else if verb == "OPTIONS" {
@@ -100,12 +80,49 @@ func (s *airServer) processRTSPRequest(c *conn, verb, resource string, headers m
 	return nil, false
 }
 
-func (s *airServer) handlePairSetup(headers map[string]string, data []byte) []byte {
-	return utils.CreateHttpResponse(true, false, nil, utils.RandomBytes(16))
+func (s *airServer) handlePairSetup(headers map[string][]string, resHeaders map[string]string, data []byte) []byte {
+	log.Println("pair-setup data: ", data)
+	return raw.PairSetup //s.publicKey[:]
 }
 
-func (s *airServer) handlePairVerify(headers map[string]string, data []byte) []byte {
-	return utils.CreateHttpResponse(true, false, nil, nil)
+func (s *airServer) handlePairVerify(headers map[string][]string, resHeaders map[string]string, data []byte) []byte {
+	if len(data) < 68 {
+		log.Println(data)
+		return nil
+	}
+	prefix := data[0:4]
+	var otherPubKey, otherAuthKey [32]byte
+	copy(otherPubKey[:], data[4:37])
+	copy(otherAuthKey[:], data[37:])
+	log.Println("prefix: ", prefix)
+	log.Println("publicKey: ", otherPubKey, "; authKey: ", otherAuthKey)
+	if prefix[0] == 0 {
+		return nil
+	}
+	return raw.PairVerify1
+	sharedKey := curve25519.SharedSecret(s.privateKey, otherPubKey)
+	sha_512 := sha512.New()
+	io.WriteString(sha_512, "Pair-Verify-AES-Key")
+	sha_512.Write(sharedKey[:])
+	aesKey := sha_512.Sum(nil)[0:16]
+	sha_512.Reset()
+	io.WriteString(sha_512, "Pair-Verify-AES-IV")
+	sha_512.Write(sharedKey[:])
+	aesIv := sha_512.Sum(nil)[0:16]
+	block, err := aes.NewCipher(aesKey)
+	if err != nil {
+		panic(err)
+	}
+	stream := cipher.NewCTR(block, aesIv[:aes.BlockSize])
+	sign, err := crypto.ED25519Signature(data[4:], utils.BytesCombine(s.publicKey[:], otherPubKey[:]))
+	if err != nil {
+		panic(err)
+	}
+	buf := make([]byte, len(otherAuthKey)+len(sign))
+	stream.XORKeyStream(buf, utils.BytesCombine(otherAuthKey[:], sign))
+	log.Println("buf: ", len(buf), buf)
+	//return utils.BytesCombine(s.publicKey[:], buf[0:64])
+	return buf
 }
 
 func (s *airServer) getClientIP(con *conn) string {

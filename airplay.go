@@ -62,7 +62,7 @@ func (s *airServer) startMirroringWebServer(port int) {
 					f := s.delegate.SupportedMirrorFeatures()
 					d := s.createFeaturesResponse(f)
 					c.buf.Write(s.createMirrorResponse(true, true, resHeaders, d))
-				} else if resource == "/fp-setup" || resource == "/pair-setup" {
+				} else if resource == "/fp-setup" {
 					resData := s.handleFairPlay(resHeaders, data)
 					c.buf.Write(s.createMirrorResponse(true, false, resHeaders, resData))
 				} else if resource == "/stream" {
